@@ -1,0 +1,40 @@
+{
+  "name": "pimatic-wavtrigger",
+  "description": "Pimatic plugin for Roberts Sonics WavTrigger",
+  "author": {
+    "name": "Bert Gierveld",
+    "email": "gitbertreb@gmail.com",
+    "url": "https://github.com/bertreb"
+  },
+  "main": "pimatic-wavtrigger",
+  "files": [
+    "pimatic-wavtrigger.coffee",
+    "pimatic-wavtrigger-config-schema.coffee",
+    "device-config-schema.coffee",
+    "README.md",
+    "LICENSE",
+    "HISTORY.md"
+  ],
+  "homepage": "https://github.com/bertreb/pimatic-wavtrigger.git",
+  "keywords": [
+    "pimatic",
+    "wavtrigger"
+  ],
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bertreb/pimatic-wavtrigger.git"
+  },
+  "configSchema": "pimatic-wavtrigger-config-schema.coffee",
+  "dependencies": {
+    "lodash": "^4.17.15",
+    "serialport": "=6.2.2"
+  },
+  "peerDependencies": {
+    "pimatic": "0.9.*"
+  },
+  "engines": {
+    "node": ">=8",
+    "npm": ">=2"
+  }
+}
