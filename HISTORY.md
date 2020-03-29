@@ -1,6 +1,6 @@
 # Release History
 
-* 202003298, v0.0.1
+* 20200328, v0.0.1
 	* initial release
-* 202003298, v0.0.2
+* 20200329, v0.0.3
 	* added action part

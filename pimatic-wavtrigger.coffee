@@ -265,9 +265,9 @@ module.exports = (env) ->
           else if _params._tracknumber?
             _trackNumber = Number _params._tracknumber
           else
-            return __("\"%s\" track number is missing") + err            
+            return __("\"%s\" track number is missing")           
           if _trackNumber < 0 or _trackNumber > 999
-              return __("\"%s\" Rule not executed WavTrigger offline") + err
+              return __("\"%s\" Rule not executed WavTrigger offline")
           _params.tracknumber = _trackNumber
           @wavDevice.execute(@command, _params)
           .then(()=>
