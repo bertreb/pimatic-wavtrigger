@@ -4,6 +4,7 @@ module.exports = (env) ->
   assert = env.require 'cassert'
   _ = require('lodash')
   SerialPort = require('serialport')
+  M = env.matcher
 
   class WavTriggerPlugin extends env.plugins.Plugin
     init: (app, @framework, @config) =>
@@ -17,6 +18,9 @@ module.exports = (env) ->
         configDef: deviceConfigDef.WavTrigger,
         createCallback: (config, lastState) => new WavTrigger(config, lastState, @framework)
       })
+
+      @framework.ruleManager.addActionProvider(new WavTriggerActionProvider(@framework))
+
 
   class WavTrigger extends env.devices.Device
 
@@ -41,6 +45,7 @@ module.exports = (env) ->
       @name = @config.name
       @serialport = @config.port
       @volume = @config.volume
+      @wavOnline = false
 
       @buttons = @config.buttons
 
@@ -59,14 +64,17 @@ module.exports = (env) ->
       @port.on 'error', (err) =>
         env.logger.debug "Serialport error handled " + err
         @status = "closed"
+        @wavOnline = false
 
       @port.on 'open', () =>
         env.logger.debug "Serialport connected"
         @status = "open"
+        @wavOnline = true
 
       @port.on 'close', () =>
         env.logger.debug "Serialport closed"
         @status = "closed"
+        @wavOnline = false
 
       @on 'button', (buttonId)=>
         button = _.find(@buttons, (b)=> (b.id).indexOf(buttonId)>=0)
@@ -74,7 +82,7 @@ module.exports = (env) ->
           @wtSolo(button.wavNumber)
           env.logger.info "WavTrigger track '#{button.wavNumber}' played"
         else
-          env.logger.debug "Unknown track number #{button.wavNumber}"
+          env.logger.debug "Unknown track number #{button}"
       super()
 
     getButton: -> Promise.resolve(@_lastPressedButton)
@@ -93,6 +101,7 @@ module.exports = (env) ->
         if err
           env.logger.debug 'Error opening port: ' + err.message
           return
+        @wavOnline = true
         env.logger.debug "Port is opened"
         #@wtPower(true)
         # play startup tune
@@ -141,12 +150,141 @@ module.exports = (env) ->
       #_WT_TRACK_STOP[6] = (_track & 0xFF00) >> 8
       @port.write(Buffer.from(_WT_STOP_ALL))
 
+
+    execute: (command, params) =>
+      return new Promise((resolve, reject) =>
+        env.logger.debug "Execute WavTrigger '#{@id}', command: " + command + ', params: ' + JSON.stringify(params,null,2)
+        switch command
+          when "track"
+            @wtSolo(params.tracknumber)
+            resolve()
+          when "stop"
+            @wtStop()
+            resolve()
+          else
+            reject()
+      )
+
     destroy:() =>
       @removeAllListeners()
       @wtStop()
       if @port?
         @port.close()
       super()
+
+  class WavTriggerActionProvider extends env.actions.ActionProvider
+
+    constructor: (@framework) ->
+
+    parseAction: (input, context) =>
+      wavDevices = _(@framework.deviceManager.devices).values().filter(
+        (device) => device.config.class is "WavTrigger").value()
+      wavDevice = null
+      match = null
+      @command = ""
+      @params = {}
+
+      setCommand = (command) =>
+        @command = command
+
+      setTrackNumber = (m, tokens) =>
+        if tokens < 0
+          context?.addError("Minimum track number is 0")
+          return
+        if tokens > 999
+          context?.addError("Maximum track number is 999")
+          return
+        @params["tracknumber"] = tokens
+        setCommand("track")
+        match = m.getFullMatch()
+        return
+
+      setTrackVar = (m, tokens) =>
+        @params["trackvar"] = tokens
+        setCommand("track")
+        match = m.getFullMatch()
+        return
+
+      m = M(input, context)
+        .match('wav ')
+        .matchDevice(wavDevices, (m, d) =>
+          # Already had a match with another device?
+          if wavDevice? and wavDevice.id isnt d.id
+            context?.addError(""""#{input.trim()}" is ambiguous.""")
+            return
+          wavDevice = d
+        )
+        .or([
+          ((m) =>
+            return m.match(' stop', (m) =>
+              setCommand("stop")
+              match = m.getFullMatch()
+            )
+          ),
+          ((m) =>
+            return m.match(' play ')
+              .or([
+                ((m) =>
+                  return m.matchVariable(setTrackVar)
+                ),
+                ((m) =>
+                  return m.matchNumber(setTrackNumber)
+                )
+              ])         
+          )
+        ])
+
+      if m.hadMatch()
+        env.logger.debug "Rule matched: '", match, "' and passed to Action handler"
+        return {
+          token: match
+          nextInput: input.substring(match.length)
+          actionHandler: new WavTriggerActionHandler(@framework, wavDevice, @command, @params)
+        }
+      else
+        return null
+
+
+  class WavTriggerActionHandler extends env.actions.ActionHandler
+
+    constructor: (@framework, @wavDevice, @command, @params) ->
+
+    executeAction: (simulate) =>
+      if simulate
+        return __("would execute command \"%s\"", @command)
+      else
+        unless @wavDevice.wavOnline
+          return __("Rule not executed, WavTrigger is offline")
+        _params = @params
+        if @command is "track"
+          if _params.trackvar?
+            _var = (_params.trackvar).slice(1) if (_params.trackvar).indexOf('$') >= 0
+            _trackNumber = Number @framework.variableManager.getVariableValue(_var)
+            unless _tracknumber?
+              return __("\"%s\" Track number variable does not excist ")                     
+          else if _params._tracknumber?
+            _trackNumber = Number _params._tracknumber
+          else
+            return __("\"%s\" track number is missing") + err            
+          if _trackNumber < 0 or _trackNumber > 999
+              return __("\"%s\" Rule not executed WavTrigger offline") + err
+          _params.tracknumber = _trackNumber
+          @wavDevice.execute(@command, _params)
+          .then(()=>
+            return __("\"%s\" Executed WavTrigger command ", @command)
+          ).catch((err)=>
+            env.logger.debug "Error in WavTrigger execute " + err
+            return __("\"%s\" Rule not executed WavTrigger offline") + err
+          )
+        else
+          @wavDevice.execute(@command, _params)
+          .then(()=>
+            return __("\"%s\"Executed WavTrigger command ", @command)
+          ).catch((err)=>
+            env.logger.debug "Error in WavTrigger execute " + err
+            return __("\"%s\" Rule not executed WavTrigger offline") + err
+          )
+
 
   wavTriggerPlugin = new WavTriggerPlugin
   return wavTriggerPlugin
