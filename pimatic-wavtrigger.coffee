@@ -39,6 +39,8 @@ module.exports = (env) ->
     constructor: (@config, lastState, @framework)->
       @id = @config.id
       @name = @config.name
+      @serialport = @config.port
+      @volume = @config.volume
 
       @buttons = @config.buttons
 
@@ -49,10 +51,22 @@ module.exports = (env) ->
       #
       # init WavTrigger
       #
-      @port = new SerialPort('/dev/ttyS0', { autoOpen: false, baudRate: 57600 })
+      @port = new SerialPort( @serialport, { autoOpen: false, baudRate: 57600 })
       @wtStart()
-      @wtDefaultVolume = -10
+      @wtDefaultVolume = @defaultVolume
       @wtVolume(@wtDefaultVolume)
+
+      @port.on 'error', (err) =>
+        env.logger.debug "Serialport error handled " + err
+        @status = "closed"
+
+      @port.on 'open', () =>
+        env.logger.debug "Serialport connected"
+        @status = "open"
+
+      @port.on 'close', () =>
+        env.logger.debug "Serialport closed"
+        @status = "closed"
 
       @on 'button', (buttonId)=>
         button = _.find(@buttons, (b)=> (b.id).indexOf(buttonId)>=0)
@@ -77,11 +91,12 @@ module.exports = (env) ->
       _WT_GET_VERSION = [0xF0,0xAA,0x05,0x01,0x55]
       @port.open((err) =>
         if err
-          @logger.info('Error opening port: ', err.message)
+          env.logger.debug 'Error opening port: ' + err.message
           return
-        @wtPower(true)
+        env.logger.debug "Port is opened"
+        #@wtPower(true)
         # play startup tune
-        @wtSolo(99)
+        #@wtSolo(99)
       )
 
     wtPower: (_state) =>

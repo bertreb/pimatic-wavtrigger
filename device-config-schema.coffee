@@ -5,6 +5,9 @@ module.exports = {
     type: "object"
     extensions: ["xLink"]
     properties:
+      port:
+        description: "the usb port number the WavTrigger is connected on"
+        type: "string"
       volume:
         description: "default volume (-90 till 0)"
         type: "number"
