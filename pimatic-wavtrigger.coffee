@@ -262,8 +262,8 @@ module.exports = (env) ->
             _trackNumber = Number @framework.variableManager.getVariableValue(_var)
             unless _tracknumber?
               return __("\"%s\" Track number variable does not excist ")                     
-          else if _params._tracknumber?
-            _trackNumber = Number _params._tracknumber
+          else if _params.tracknumber?
+            _trackNumber = Number _params.tracknumber
           else
             return __("\"%s\" track number is missing")           
           if _trackNumber < 0 or _trackNumber > 999
