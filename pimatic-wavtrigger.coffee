@@ -230,9 +230,11 @@ module.exports = (env) ->
                 ((m) =>
                   return m.matchNumber(setTrackNumber)
                 )
-              ])         
+              ])
           )
         ])
+
+      match = m.getFullMatch()
 
       if m.hadMatch()
         env.logger.debug "Rule matched: '", match, "' and passed to Action handler"
@@ -261,11 +263,11 @@ module.exports = (env) ->
             _var = (_params.trackvar).slice(1) if (_params.trackvar).indexOf('$') >= 0
             _trackNumber = Number @framework.variableManager.getVariableValue(_var)
             unless _tracknumber?
-              return __("\"%s\" Track number variable does not excist ")                     
+              return __("\"%s\" Track number variable does not excist ")
           else if _params.tracknumber?
             _trackNumber = Number _params.tracknumber
           else
-            return __("\"%s\" track number is missing")           
+            return __("\"%s\" track number is missing")
           if _trackNumber < 0 or _trackNumber > 999
               return __("\"%s\" Rule not executed WavTrigger offline")
           _params.tracknumber = _trackNumber
@@ -288,4 +290,3 @@ module.exports = (env) ->
 
   wavTriggerPlugin = new WavTriggerPlugin
   return wavTriggerPlugin
-
