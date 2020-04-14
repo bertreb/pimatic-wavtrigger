@@ -15,7 +15,7 @@ buttons: [
     text: "The track button name"
     wavNumber: "The wavTrigger file number (0-999)"
     confirm: "Ask the user to confirm the button press"
-  ]
+]
 ```
 You can create a button to trigger a track, but it's not needed because the WavTrigger can be controlled via rules only.
 
