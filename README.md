@@ -10,8 +10,8 @@ After installing the plugin, you create a WavTigger device with the following co
 port: "the usb port number the WavTrigger is connected on"
 volume: "the default volume (-90 till 0)"
 buttons: [
-	button:
-  	id: "The track button id"
+  button:
+    id: "The track button id"
     text: "The track button name"
     wavNumber: "The wavTrigger file number (0-999)"
     confirm: "Ask the user to confirm the button press"
